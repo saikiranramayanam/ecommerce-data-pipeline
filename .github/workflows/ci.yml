@@ -42,15 +42,21 @@ jobs:
         pip install flake8
         flake8 scripts/ --ignore=E501,E302,E305,W291,W293,E722,F401,F811,F541 || true
     
-    - name: Create ALL schemas
+    - name: Setup DB + Seed Pipeline ✅
       env:
         PGPASSWORD: password
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: ecommercedb
+        DB_USER: admin
+        DB_PASSWORD: password
       run: |
-        docker exec $(docker ps -q --filter ancestor=postgres:14) psql -U admin -d ecommercedb -c "CREATE SCHEMA IF NOT EXISTS staging;"
-        docker exec $(docker ps -q --filter ancestor=postgres:14) psql -U admin -d ecommercedb -c "CREATE SCHEMA IF NOT EXISTS production;"
-        docker exec $(docker ps -q --filter ancestor=postgres:14) psql -U admin -d ecommercedb -c "CREATE SCHEMA IF NOT EXISTS warehouse;"
+        psql -h localhost -U admin -d ecommercedb -c "CREATE SCHEMA IF NOT EXISTS staging, production, warehouse;"
+        python scripts/datageneration/generatedata.py
+        python scripts/ingestion/ingest_to_staging.py
+        python scripts/qualitychecks/validate_data.py
     
-    - name: Run ALL 15 tests with coverage ✅
+    - name: Run ALL 15 tests ✅
       env:
         PGPASSWORD: password
         DB_HOST: localhost
