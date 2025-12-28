@@ -42,23 +42,42 @@ jobs:
         pip install flake8
         flake8 scripts/ --ignore=E501,E302,E305,W291,W293,E722,F401,F811,F541 || true
     
-    - name: Setup DB + Run FULL Pipeline ✅
+    - name: Setup DB + FULL Tables ✅
       env:
         PGPASSWORD: password
       run: |
         psql -h localhost -U admin -d ecommercedb -c "CREATE SCHEMA IF NOT EXISTS staging;" -c "CREATE SCHEMA IF NOT EXISTS production;" -c "CREATE SCHEMA IF NOT EXISTS warehouse;"
         psql -h localhost -U admin -d ecommercedb -c "
+          -- STAGING TABLES (for ingestion)
           CREATE TABLE IF NOT EXISTS staging.customers (
             customerid TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, phone BIGINT,
             registrationdate DATE, city TEXT, state TEXT, country TEXT, agegroup TEXT
           );
           CREATE TABLE IF NOT EXISTS staging.products (
-            productid TEXT PRIMARY KEY, productname TEXT, category TEXT, price NUMERIC, cost NUMERIC
+            productid TEXT PRIMARY KEY, productname TEXT, category TEXT, subcategory TEXT,
+            price NUMERIC, cost NUMERIC, brand TEXT, stockquantity INTEGER, supplierid TEXT
           );
           CREATE TABLE IF NOT EXISTS staging.transactions (
             transactionid TEXT PRIMARY KEY, customerid TEXT, transactiondate DATE, paymentmethod TEXT
           );
           CREATE TABLE IF NOT EXISTS staging.transactionitems (
+            itemid TEXT PRIMARY KEY, transactionid TEXT, productid TEXT, quantity INTEGER,
+            unitprice NUMERIC, discountpercentage NUMERIC, linetotal NUMERIC
+          );
+          
+          -- PRODUCTION TABLES (for staging_to_production.py)
+          CREATE TABLE IF NOT EXISTS production.customers (
+            customerid TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, 
+            phone BIGINT, registrationdate DATE, city TEXT, state TEXT, country TEXT, agegroup TEXT
+          );
+          CREATE TABLE IF NOT EXISTS production.products (
+            productid TEXT PRIMARY KEY, productname TEXT, category TEXT, subcategory TEXT,
+            price NUMERIC, cost NUMERIC, brand TEXT, stockquantity INTEGER, supplierid TEXT
+          );
+          CREATE TABLE IF NOT EXISTS production.transactions (
+            transactionid TEXT PRIMARY KEY, customerid TEXT, transactiondate DATE, paymentmethod TEXT
+          );
+          CREATE TABLE IF NOT EXISTS production.transactionitems (
             itemid TEXT PRIMARY KEY, transactionid TEXT, productid TEXT, quantity INTEGER,
             unitprice NUMERIC, discountpercentage NUMERIC, linetotal NUMERIC
           );
